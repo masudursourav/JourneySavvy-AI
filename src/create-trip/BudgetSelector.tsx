@@ -7,22 +7,21 @@ import { useState } from "react";
 interface BudgetSelectorProps {
   selectedBudget: string | null;
   onBudgetSelect: (budget: string) => void;
-  customBudget?: string;
-  onCustomBudgetChange?: (amount: string) => void;
 }
 
 function BudgetSelector({
   selectedBudget,
   onBudgetSelect,
-  customBudget = "",
-  onCustomBudgetChange,
 }: BudgetSelectorProps) {
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const isCustomBudget =
+    selectedBudget &&
+    !budgetOptions.find((option) => option.value === selectedBudget);
+  const customBudget = isCustomBudget ? selectedBudget : "";
 
   const handleBudgetClick = (value: string) => {
     if (value === "other") {
       setShowCustomInput(true);
-      onBudgetSelect(value);
     } else {
       setShowCustomInput(false);
       if (selectedBudget === value) {
@@ -31,6 +30,10 @@ function BudgetSelector({
         onBudgetSelect(value);
       }
     }
+  };
+
+  const handleCustomBudgetChange = (value: string) => {
+    onBudgetSelect(value);
   };
   return (
     <div className="max-w-4xl mt-8">
@@ -82,7 +85,7 @@ function BudgetSelector({
         {/* Other Option */}
         <div
           className={`p-6 border rounded-xl hover:shadow-xl transition-all duration-300 flex flex-col h-full ${
-            selectedBudget === "other"
+            isCustomBudget
               ? "border-blue-500 bg-blue-50 shadow-lg"
               : "border-gray-200 hover:border-gray-300"
           }`}
@@ -93,13 +96,13 @@ function BudgetSelector({
             <p className="text-gray-600 mb-2 text-sm leading-relaxed">
               Enter your custom budget amount
             </p>
-            {showCustomInput && selectedBudget === "other" && (
+            {showCustomInput && (
               <div className="mt-3">
                 <Input
                   type="number"
                   placeholder="Enter amount ($)"
                   value={customBudget}
-                  onChange={(e) => onCustomBudgetChange?.(e.target.value)}
+                  onChange={(e) => handleCustomBudgetChange(e.target.value)}
                   className="w-full"
                 />
               </div>
@@ -107,11 +110,11 @@ function BudgetSelector({
           </div>
           <div className="mt-4 pt-4 border-t border-gray-100">
             <Button
-              variant={selectedBudget === "other" ? "default" : "outline"}
+              variant={isCustomBudget ? "default" : "outline"}
               className="w-full"
               onClick={() => handleBudgetClick("other")}
             >
-              {selectedBudget === "other" ? "Selected" : "Select"}
+              {isCustomBudget ? "Selected" : "Select"}
             </Button>
           </div>
         </div>

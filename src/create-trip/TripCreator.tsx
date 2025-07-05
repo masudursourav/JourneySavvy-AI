@@ -1,12 +1,15 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { travelPlanner } from "@/lib/AiModel";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { LocationEdit, MapPin, TentTreeIcon, TramFront } from "lucide-react";
+import { CalendarDays, LocationEdit, MapPin, TentTreeIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import DatePicker from "../components/custom/DatePicker";
 import { loadGoogleMapsAPI } from "../lib/googleMapsLoader";
 import { tripFormSchema, type TripFormData } from "../lib/validationSchemas";
 import BudgetSelector from "./BudgetSelector";
+import CurrentLocationSelector from "./CurrentLocationSelector";
 import DestinationSelector from "./DestinationSelector";
 import TravelerSelector from "./TravelerSelector";
 
@@ -14,6 +17,9 @@ function TripCreator() {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
   const [selectedPlace, setSelectedPlace] =
     useState<google.maps.places.PlaceResult | null>(null);
+  const [selectedCurrentLocation, setSelectedCurrentLocation] =
+    useState<google.maps.places.PlaceResult | null>(null);
+
   const {
     register,
     handleSubmit,
@@ -25,21 +31,18 @@ function TripCreator() {
     resolver: zodResolver(tripFormSchema),
     mode: "onChange",
     defaultValues: {
-      destination: selectedPlace
-        ? selectedPlace.formatted_address || selectedPlace.name
-        : "",
+      currentLocation: "",
+      destination: "",
+      startDate: undefined,
       days: 5,
       budget: "",
-      customBudget: "",
       traveler: "",
-      customTravelerCount: "",
     },
   });
 
   const selectedBudget = watch("budget");
   const selectedTraveler = watch("traveler");
-  const customBudget = watch("customBudget");
-  const customTravelerCount = watch("customTravelerCount");
+  const startDate = watch("startDate");
 
   useEffect(() => {
     const loadMapsAPI = async () => {
@@ -53,6 +56,42 @@ function TripCreator() {
 
     loadMapsAPI();
   }, []);
+
+  const handleCurrentLocationSelect = async (
+    place: google.maps.places.PlaceResult
+  ) => {
+    setSelectedCurrentLocation(place);
+    let cityName = "";
+    let countryName = "";
+
+    if (place.address_components) {
+      for (const component of place.address_components) {
+        if (component.types.includes("locality")) {
+          cityName = component.long_name;
+        } else if (component.types.includes("administrative_area_level_1")) {
+          if (!cityName) {
+            cityName = component.long_name;
+          }
+        } else if (component.types.includes("country")) {
+          countryName = component.long_name;
+        }
+      }
+    }
+
+    const cleanLocation =
+      cityName && countryName
+        ? `${cityName}, ${countryName}`
+        : place.name || place.formatted_address || "selected";
+
+    setValue("currentLocation", cleanLocation);
+    await trigger("currentLocation");
+  };
+
+  const handleClearCurrentLocation = async () => {
+    setSelectedCurrentLocation(null);
+    setValue("currentLocation", "");
+    await trigger("currentLocation");
+  };
 
   const handlePlaceSelect = async (place: google.maps.places.PlaceResult) => {
     setSelectedPlace(place);
@@ -69,33 +108,50 @@ function TripCreator() {
     await trigger("destination");
   };
 
+  const handleDateChange = async (date: Date | undefined) => {
+    setValue("startDate", date as Date);
+    await trigger("startDate");
+  };
+
   const handleBudgetSelect = async (budget: string) => {
     setValue("budget", budget);
-    if (budget !== "other") {
-      setValue("customBudget", "");
-    }
-    await trigger(["budget", "customBudget"]);
+    await trigger("budget");
   };
 
   const handleTravelerSelect = async (traveler: string) => {
     setValue("traveler", traveler);
-    if (traveler !== "other") {
-      setValue("customTravelerCount", "");
+    await trigger("traveler");
+  };
+
+  const onSubmit = async (formData: TripFormData) => {
+    console.log("Form data being submitted:", formData);
+
+    try {
+      const response = await travelPlanner(formData);
+      console.log("Full API response:", response);
+
+      let cleanedResponse = response.trim();
+
+      if (cleanedResponse.startsWith("```json")) {
+        cleanedResponse = cleanedResponse.slice(7);
+      }
+      if (cleanedResponse.endsWith("```")) {
+        cleanedResponse = cleanedResponse.slice(0, -3);
+      }
+      cleanedResponse = cleanedResponse.trim();
+
+      console.log("Cleaned response:", cleanedResponse);
+      try {
+        const parsedResponse = JSON.parse(cleanedResponse);
+        console.log("Parsed trip data:", parsedResponse);
+      } catch (parseError) {
+        console.error("Failed to parse response as JSON:", parseError);
+        console.log("Cleaned response:", cleanedResponse);
+      }
+    } catch (error) {
+      console.error("Error generating trip:", error);
     }
-    await trigger(["traveler", "customTravelerCount"]);
   };
-
-  const handleCustomBudgetChange = async (value: string) => {
-    setValue("customBudget", value);
-    await trigger("customBudget");
-  };
-
-  const handleCustomTravelerChange = async (value: string) => {
-    setValue("customTravelerCount", value);
-    await trigger("customTravelerCount");
-  };
-
-  const onSubmit = (formData: TripFormData) => {};
   return (
     <form onSubmit={handleSubmit(onSubmit)}>
       <div className="px-6 md:px-12 lg:px-24 xl:px-32 2xl:px-56 mt-10 max-w-7xl mx-auto">
@@ -113,13 +169,30 @@ function TripCreator() {
         </div>
         <div className="mt-20">
           <h3 className="text-2xl font-semibold text-gray-800 mb-8 flex items-center">
+            Where are you starting from?{" "}
+            <MapPin className="inline-block h-6 w-6 ml-2" />
+          </h3>
+          <CurrentLocationSelector
+            isMapLoaded={isMapLoaded}
+            onPlaceSelect={handleCurrentLocationSelect}
+            onClearPlace={handleClearCurrentLocation}
+            selectedPlace={selectedCurrentLocation}
+          />
+          {errors.currentLocation && (
+            <p className="text-red-500 text-sm mt-2">
+              {errors.currentLocation.message}
+            </p>
+          )}
+
+          <h3 className="text-2xl font-semibold text-gray-800 mb-8 mt-12 flex items-center">
             What is your destination?{" "}
-            <MapPin className="inline-block h-6 w-6 ml-" />
+            <MapPin className="inline-block h-6 w-6 ml-2" />
           </h3>
           <DestinationSelector
             isMapLoaded={isMapLoaded}
             onPlaceSelect={handlePlaceSelect}
             onClearPlace={handleClearPlace}
+            selectedPlace={selectedPlace}
           />
           {errors.destination && (
             <p className="text-red-500 text-sm mt-2">
@@ -127,51 +200,63 @@ function TripCreator() {
             </p>
           )}
 
-          <div className="max-w-2xl">
+          <div className="max-w-4xl">
             <h3 className="text-2xl font-semibold text-gray-800 mt-12 mb-6">
-              How many days do you plan to travel?{" "}
-              <TramFront className="inline-block h-6 w-6 ml-2" />
+              Trip Details{" "}
+              <CalendarDays className="inline-block h-6 w-6 ml-2" />
             </h3>
-            <Input
-              placeholder="Ex. 3"
-              type="number"
-              className="py-6"
-              {...register("days", { valueAsNumber: true })}
-            />
-            {errors.days && (
-              <p className="text-red-500 text-sm mt-2">{errors.days.message}</p>
-            )}
+            <div className="flex flex-col lg:flex-row lg:gap-8 gap-6">
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  When do you want to start your trip?
+                </label>
+                <DatePicker
+                  date={startDate}
+                  onDateChange={handleDateChange}
+                  placeholder="Select your trip start date"
+                  className="border-2 border-gray-100 w-full"
+                />
+                {errors.startDate && (
+                  <p className="text-red-500 text-sm mt-2">
+                    {errors.startDate.message}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex-1">
+                <label className="block text-sm font-medium text-gray-700 mb-2">
+                  How many days do you plan to travel?
+                </label>
+                <Input
+                  placeholder="Ex. 3"
+                  type="number"
+                  className="py-6 w-full"
+                  {...register("days", { valueAsNumber: true })}
+                />
+                {errors.days && (
+                  <p className="text-red-500 text-sm mt-2">
+                    {errors.days.message}
+                  </p>
+                )}
+              </div>
+            </div>
           </div>
 
           <BudgetSelector
             selectedBudget={selectedBudget}
             onBudgetSelect={handleBudgetSelect}
-            customBudget={customBudget}
-            onCustomBudgetChange={handleCustomBudgetChange}
           />
           {errors.budget && (
             <p className="text-red-500 text-sm mt-2">{errors.budget.message}</p>
-          )}
-          {errors.customBudget && (
-            <p className="text-red-500 text-sm mt-2">
-              {errors.customBudget.message}
-            </p>
           )}
 
           <TravelerSelector
             selectedTraveler={selectedTraveler}
             onTravelerSelect={handleTravelerSelect}
-            customTravelerCount={customTravelerCount}
-            onCustomTravelerChange={handleCustomTravelerChange}
           />
           {errors.traveler && (
             <p className="text-red-500 text-sm mt-2">
               {errors.traveler.message}
-            </p>
-          )}
-          {errors.customTravelerCount && (
-            <p className="text-red-500 text-sm mt-2">
-              {errors.customTravelerCount.message}
             </p>
           )}
         </div>
