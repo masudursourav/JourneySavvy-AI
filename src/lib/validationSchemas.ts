@@ -1,6 +1,4 @@
 import { z } from "zod";
-
-// Validation schema for trip creation form
 export const tripFormSchema = z
   .object({
     destination: z.string().min(1, "Please select a destination"),
@@ -15,7 +13,6 @@ export const tripFormSchema = z
   })
   .refine(
     (data) => {
-      // If budget is "other", customBudget must be provided and be a valid number
       if (data.budget === "other") {
         return (
           data.customBudget &&
@@ -32,7 +29,6 @@ export const tripFormSchema = z
   )
   .refine(
     (data) => {
-      // If traveler is "other", customTravelerCount must be provided and be a valid number
       if (data.traveler === "other") {
         return (
           data.customTravelerCount &&
@@ -47,6 +43,4 @@ export const tripFormSchema = z
       path: ["customTravelerCount"],
     }
   );
-
-// Type inference from the schema
 export type TripFormData = z.infer<typeof tripFormSchema>;
