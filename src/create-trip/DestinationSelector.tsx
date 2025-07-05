@@ -4,6 +4,7 @@ interface DestinationSelectorProps {
   isMapLoaded: boolean;
   onPlaceSelect: (place: google.maps.places.PlaceResult) => void;
   onClearPlace?: () => void;
+  selectedPlace?: google.maps.places.PlaceResult | null;
 }
 
 function DestinationSelector({

@@ -7,22 +7,21 @@ import { useState } from "react";
 interface TravelerSelectorProps {
   selectedTraveler: string | null;
   onTravelerSelect: (traveler: string) => void;
-  customTravelerCount?: string;
-  onCustomTravelerChange?: (count: string) => void;
 }
 
 function TravelerSelector({
   selectedTraveler,
   onTravelerSelect,
-  customTravelerCount = "",
-  onCustomTravelerChange,
 }: TravelerSelectorProps) {
   const [showCustomInput, setShowCustomInput] = useState(false);
+  const isCustomTraveler =
+    selectedTraveler &&
+    !travelerListOptions.find((option) => option.value === selectedTraveler);
+  const customTravelerCount = isCustomTraveler ? selectedTraveler : "";
 
   const handleTravelerClick = (value: string) => {
     if (value === "other") {
       setShowCustomInput(true);
-      onTravelerSelect(value);
     } else {
       setShowCustomInput(false);
       if (selectedTraveler === value) {
@@ -31,6 +30,10 @@ function TravelerSelector({
         onTravelerSelect(value);
       }
     }
+  };
+
+  const handleCustomTravelerChange = (value: string) => {
+    onTravelerSelect(value + " people (group)");
   };
 
   return (
@@ -86,7 +89,7 @@ function TravelerSelector({
         {/* Other Option */}
         <div
           className={`p-6 border rounded-xl hover:shadow-xl transition-all duration-300 flex flex-col h-full cursor-pointer ${
-            selectedTraveler === "other"
+            isCustomTraveler
               ? "border-blue-500 bg-blue-50 shadow-lg"
               : "border-gray-200 hover:border-gray-300"
           }`}
@@ -98,13 +101,13 @@ function TravelerSelector({
             <p className="text-gray-600 mb-2 text-sm leading-relaxed">
               Enter custom number of travelers
             </p>
-            {showCustomInput && selectedTraveler === "other" && (
+            {showCustomInput && (
               <div className="mt-3">
                 <Input
                   type="number"
                   placeholder="Number of people"
-                  value={customTravelerCount}
-                  onChange={(e) => onCustomTravelerChange?.(e.target.value)}
+                  value={customTravelerCount.replace(" people (group)", "")}
+                  onChange={(e) => handleCustomTravelerChange(e.target.value)}
                   className="w-full"
                   onClick={(e) => e.stopPropagation()}
                 />
@@ -113,14 +116,14 @@ function TravelerSelector({
           </div>
           <div className="mt-4 pt-4 border-t border-gray-100">
             <Button
-              variant={selectedTraveler === "other" ? "default" : "outline"}
+              variant={isCustomTraveler ? "default" : "outline"}
               className="w-full"
               onClick={(e) => {
                 e.stopPropagation();
                 handleTravelerClick("other");
               }}
             >
-              {selectedTraveler === "other" ? "Selected" : "Select"}
+              {isCustomTraveler ? "Selected" : "Select"}
             </Button>
           </div>
         </div>
