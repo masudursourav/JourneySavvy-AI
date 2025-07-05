@@ -394,12 +394,12 @@ export async function travelPlanner(formData: TripFormData) {
           text: `You are a travel planner AI. Your task is to generate a detailed travel plan based on user input. Provide information about flights, weather, accommodation, itinerary, unique activities, traditional foods, and useful travel resources in JSON format without any additional text.
 
             Generate Travel plane for: from ${formData.currentLocation} to ${
-            formData.destination
-          } for ${formData.days} days and total budget is ${
-            formData.budget
-          }$ and travelers  ${
-            formData.traveler
-          }, and the start date is ${formData.startDate.toISOString()}
+              formData.destination
+            } for ${formData.days} days and total budget is ${
+              formData.budget
+            }$ and travelers  ${
+              formData.traveler
+            }, and the start date is ${formData.startDate.toISOString()}
 
         in output will give me number of flight available in that route, and also alternative to go to that destination. what will be the weather of those days. Hotel options, Hotel name, hotel address, proper hotel image url, geo coordinates, rating, description. Suggest itinerary with places, place details, proper place image url, Geo coordinates, ticket price if available, rating. Unique activities they can do those days and Suggest traditional foods with food name, food details, proper food image url. Plan the trip as best as possible and give text based suggestions also. Give useful urls for travels. In JSON format without any additional text`,
         },

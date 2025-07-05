@@ -81,7 +81,7 @@ function CurrentLocationSelector({
               onPlaceSelect(placeResult);
             } else {
               alert(
-                "Unable to determine your current location. Please select manually."
+                "Unable to determine your current location. Please select manually.",
               );
             }
           });
@@ -98,7 +98,7 @@ function CurrentLocationSelector({
         switch (error.code) {
           case error.PERMISSION_DENIED:
             alert(
-              "Location access denied. Please select your location manually."
+              "Location access denied. Please select your location manually.",
             );
             break;
           case error.POSITION_UNAVAILABLE:
@@ -116,7 +116,7 @@ function CurrentLocationSelector({
         enableHighAccuracy: true,
         timeout: 10000,
         maximumAge: 60000,
-      }
+      },
     );
   };
 

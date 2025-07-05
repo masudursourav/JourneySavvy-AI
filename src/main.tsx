@@ -14,5 +14,5 @@ createRoot(document.getElementById("root")!).render(
         <Route path="/create-trip" element={<TripCreator />} />
       </Routes>
     </BrowserRouter>
-  </StrictMode>
+  </StrictMode>,
 );

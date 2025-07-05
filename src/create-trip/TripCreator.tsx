@@ -58,7 +58,7 @@ function TripCreator() {
   }, []);
 
   const handleCurrentLocationSelect = async (
-    place: google.maps.places.PlaceResult
+    place: google.maps.places.PlaceResult,
   ) => {
     setSelectedCurrentLocation(place);
     let cityName = "";
@@ -97,7 +97,7 @@ function TripCreator() {
     setSelectedPlace(place);
     setValue(
       "destination",
-      place.formatted_address || place.name || "selected"
+      place.formatted_address || place.name || "selected",
     );
     await trigger("destination");
   };

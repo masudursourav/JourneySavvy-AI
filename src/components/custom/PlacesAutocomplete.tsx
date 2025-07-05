@@ -32,7 +32,7 @@ function PlacesAutocomplete({
         }
       }, debounceMs);
     },
-    [onClearPlace, debounceMs]
+    [onClearPlace, debounceMs],
   );
 
   useEffect(() => {
@@ -66,7 +66,7 @@ function PlacesAutocomplete({
           return;
         }
         onPlaceSelect(place);
-      }
+      },
     );
 
     const handleInputChange = () => {

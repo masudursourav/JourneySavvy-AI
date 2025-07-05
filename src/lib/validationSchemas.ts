@@ -29,7 +29,7 @@ export const tripFormSchema = z
     {
       message: "Please enter a valid custom budget amount",
       path: ["budget"],
-    }
+    },
   )
   .refine(
     (data) => {
@@ -48,6 +48,6 @@ export const tripFormSchema = z
     {
       message: "Please enter a valid number of travelers",
       path: ["traveler"],
-    }
+    },
   );
 export type TripFormData = z.infer<typeof tripFormSchema>;
