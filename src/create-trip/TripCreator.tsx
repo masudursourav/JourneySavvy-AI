@@ -1,17 +1,34 @@
+import SignInDialog from "@/components/custom/SignInDialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { travelPlanner } from "@/lib/AiModel";
+import { db } from "@/lib/FireBaseConfig";
+import {
+  getUserInfo,
+  isUserAuthenticated,
+  type UserInfo,
+} from "@/lib/userUtils";
 import { zodResolver } from "@hookform/resolvers/zod";
+import { doc, setDoc } from "firebase/firestore";
 import { CalendarDays, LocationEdit, MapPin, TentTreeIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
 import DatePicker from "../components/custom/DatePicker";
 import { loadGoogleMapsAPI } from "../lib/googleMapsLoader";
 import { tripFormSchema, type TripFormData } from "../lib/validationSchemas";
+import { type TripResponse } from "../types/tripTypes";
 import BudgetSelector from "./BudgetSelector";
 import CurrentLocationSelector from "./CurrentLocationSelector";
 import DestinationSelector from "./DestinationSelector";
 import TravelerSelector from "./TravelerSelector";
+
+// Interface for trip data that will be saved to database
+interface TripData {
+  userInfo: UserInfo;
+  formData: TripFormData;
+  createdAt: string;
+  tripResponse: TripResponse;
+}
 
 function TripCreator() {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -19,15 +36,9 @@ function TripCreator() {
     useState<google.maps.places.PlaceResult | null>(null);
   const [selectedCurrentLocation, setSelectedCurrentLocation] =
     useState<google.maps.places.PlaceResult | null>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const {
-    register,
-    handleSubmit,
-    setValue,
-    watch,
-    trigger,
-    formState: { errors, isValid },
-  } = useForm<TripFormData>({
+  const form = useForm<TripFormData>({
     resolver: zodResolver(tripFormSchema),
     mode: "onChange",
     defaultValues: {
@@ -40,10 +51,21 @@ function TripCreator() {
     },
   });
 
-  const selectedBudget = watch("budget");
-  const selectedTraveler = watch("traveler");
-  const startDate = watch("startDate");
+  const {
+    register,
+    handleSubmit,
+    setValue,
+    watch,
+    trigger,
+    formState: { errors, isValid },
+  } = form;
+  const { selectedBudget, selectedTraveler, startDate } = {
+    selectedBudget: watch("budget"),
+    selectedTraveler: watch("traveler"),
+    startDate: watch("startDate"),
+  };
 
+  // Load Google Maps API
   useEffect(() => {
     const loadMapsAPI = async () => {
       try {
@@ -53,14 +75,11 @@ function TripCreator() {
         console.error("Failed to load Google Maps API:", error);
       }
     };
-
     loadMapsAPI();
   }, []);
 
-  const handleCurrentLocationSelect = async (
-    place: google.maps.places.PlaceResult,
-  ) => {
-    setSelectedCurrentLocation(place);
+  // Extract city and country from place
+  const extractLocationInfo = (place: google.maps.places.PlaceResult) => {
     let cityName = "";
     let countryName = "";
 
@@ -69,20 +88,24 @@ function TripCreator() {
         if (component.types.includes("locality")) {
           cityName = component.long_name;
         } else if (component.types.includes("administrative_area_level_1")) {
-          if (!cityName) {
-            cityName = component.long_name;
-          }
+          if (!cityName) cityName = component.long_name;
         } else if (component.types.includes("country")) {
           countryName = component.long_name;
         }
       }
     }
 
-    const cleanLocation =
-      cityName && countryName
-        ? `${cityName}, ${countryName}`
-        : place.name || place.formatted_address || "selected";
+    return cityName && countryName
+      ? `${cityName}, ${countryName}`
+      : place.name || place.formatted_address || "selected";
+  };
 
+  // Form handlers
+  const handleCurrentLocationSelect = async (
+    place: google.maps.places.PlaceResult
+  ) => {
+    setSelectedCurrentLocation(place);
+    const cleanLocation = extractLocationInfo(place);
     setValue("currentLocation", cleanLocation);
     await trigger("currentLocation");
   };
@@ -97,7 +120,7 @@ function TripCreator() {
     setSelectedPlace(place);
     setValue(
       "destination",
-      place.formatted_address || place.name || "selected",
+      place.formatted_address || place.name || "selected"
     );
     await trigger("destination");
   };
@@ -123,27 +146,44 @@ function TripCreator() {
     await trigger("traveler");
   };
 
+  // Clean API response
+  const cleanResponse = (response: string) => {
+    let cleaned = response.trim();
+    if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
+    if (cleaned.endsWith("```")) cleaned = cleaned.slice(0, -3);
+    return cleaned.trim();
+  };
+
+  // Form submission
   const onSubmit = async (formData: TripFormData) => {
     console.log("Form data being submitted:", formData);
 
+    // Check authentication
+    if (!isUserAuthenticated()) {
+      setIsDialogOpen(true);
+      return;
+    }
+
+    const userInfo = getUserInfo();
+    console.log("User info for trip:", userInfo);
+
+    if (!userInfo) {
+      console.error("User info is null");
+      return;
+    }
+
     try {
       const response = await travelPlanner(formData);
-      console.log("Full API response:", response);
-
-      let cleanedResponse = response.trim();
-
-      if (cleanedResponse.startsWith("```json")) {
-        cleanedResponse = cleanedResponse.slice(7);
-      }
-      if (cleanedResponse.endsWith("```")) {
-        cleanedResponse = cleanedResponse.slice(0, -3);
-      }
-      cleanedResponse = cleanedResponse.trim();
-
-      console.log("Cleaned response:", cleanedResponse);
+      const cleanedResponse = cleanResponse(response);
       try {
-        const parsedResponse = JSON.parse(cleanedResponse);
-        console.log("Parsed trip data:", parsedResponse);
+        const parsedResponse: TripResponse = JSON.parse(cleanedResponse);
+        const tripData: TripData = {
+          userInfo: userInfo,
+          formData,
+          createdAt: new Date().toISOString(),
+          tripResponse: parsedResponse,
+        };
+        saveToDB(tripData); // Function to save trip data to database or localStorage
       } catch (parseError) {
         console.error("Failed to parse response as JSON:", parseError);
         console.log("Cleaned response:", cleanedResponse);
@@ -152,8 +192,20 @@ function TripCreator() {
       console.error("Error generating trip:", error);
     }
   };
+
+  const saveToDB = async (tripData: TripData) => {
+    await setDoc(doc(db, "trips", tripData.createdAt), {
+      ...tripData,
+    });
+  };
+
+  const handleGenerateTrip = (e: React.FormEvent) => {
+    e.preventDefault();
+    console.log("Generate Trip button clicked");
+    handleSubmit(onSubmit)(e);
+  };
   return (
-    <form onSubmit={handleSubmit(onSubmit)}>
+    <form onSubmit={(e) => e.preventDefault()}>
       <div className="px-6 md:px-12 lg:px-24 xl:px-32 2xl:px-56 mt-10 max-w-7xl mx-auto">
         <div className="text-center lg:text-left">
           <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#080279] via-[#090979] to-[#00d4ff] bg-clip-text text-transparent tracking-tight leading-tight">
@@ -263,9 +315,10 @@ function TripCreator() {
 
         <div className="my-12 flex flex-col justify-center items-center">
           <Button
-            type="submit"
+            type="button"
             variant="default"
             disabled={!isValid}
+            onClick={handleGenerateTrip}
             className={`px-8 py-3 text-lg font-semibold transition-all duration-200 ${
               !isValid
                 ? "opacity-50 cursor-not-allowed"
@@ -279,6 +332,7 @@ function TripCreator() {
               Please fill out all required fields correctly.
             </p>
           )}
+          <SignInDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
         </div>
       </div>
     </form>
