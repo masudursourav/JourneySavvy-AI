@@ -22,11 +22,15 @@ export const isUserAuthenticated = (): boolean => {
 export const clearUserData = (): void => {
   localStorage.removeItem("user");
   localStorage.removeItem("userInfo");
+  // Dispatch custom event to notify components of auth state change
+  window.dispatchEvent(new CustomEvent("authStateChanged"));
 };
 
 // Save user info to localStorage
 export const saveUserInfo = (userInfo: UserInfo): void => {
   localStorage.setItem("userInfo", JSON.stringify(userInfo));
+  // Dispatch custom event to notify components of auth state change
+  window.dispatchEvent(new CustomEvent("authStateChanged"));
 };
 
 // Fetch user information from Google API
