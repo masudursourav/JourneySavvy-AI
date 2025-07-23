@@ -23,9 +23,15 @@ export default function SignInDialog({
     }
   };
   const logIn = useGoogleLogin({
-    onSuccess: (tokenResponse) => {
+    onSuccess: async (tokenResponse) => {
       localStorage.setItem("user", JSON.stringify(tokenResponse));
-      fetchUserInfo();
+      try {
+        await fetchUserInfo();
+        // Dispatch event to notify header of auth change
+        window.dispatchEvent(new CustomEvent("authStateChanged"));
+      } catch (error) {
+        console.error("Error fetching user info:", error);
+      }
       onOpenChange(false);
     },
     onError: (error) => {

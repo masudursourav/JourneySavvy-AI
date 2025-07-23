@@ -8,6 +8,7 @@ import PrivateRoute from "./components/PrivateRoute.tsx";
 import { Toaster } from "./components/ui/sonner.tsx";
 import TripCreator from "./create-trip/TripCreator.tsx";
 import "./index.css";
+import MyTrips from "./my-trips/MyTrips.tsx";
 import ViewTrip from "./view-trip/[tripId]/ViewTrip.tsx";
 
 createRoot(document.getElementById("root")!).render(
@@ -18,6 +19,14 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/create-trip" element={<TripCreator />} />
+          <Route
+            path="/my-trips"
+            element={
+              <PrivateRoute>
+                <MyTrips />
+              </PrivateRoute>
+            }
+          />
           <Route
             path="/view-trip/:tripId"
             element={
