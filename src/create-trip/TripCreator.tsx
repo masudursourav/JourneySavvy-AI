@@ -3,32 +3,27 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { travelPlanner } from "@/lib/AiModel";
 import { db } from "@/lib/FireBaseConfig";
-import {
-  getUserInfo,
-  isUserAuthenticated,
-  type UserInfo,
-} from "@/lib/userUtils";
+import { getUserInfo, isUserAuthenticated } from "@/lib/userUtils";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { doc, setDoc } from "firebase/firestore";
 import { CalendarDays, LocationEdit, MapPin, TentTreeIcon } from "lucide-react";
 import { useEffect, useState } from "react";
 import { useForm } from "react-hook-form";
+import { useNavigate } from "react-router";
+import { toast } from "sonner";
 import DatePicker from "../components/custom/DatePicker";
+import LoadingOverlay from "../components/custom/LoadingOverlay";
 import { loadGoogleMapsAPI } from "../lib/googleMapsLoader";
 import { tripFormSchema, type TripFormData } from "../lib/validationSchemas";
-import { type TripResponse } from "../types/tripTypes";
+import {
+  type TripDocument,
+  type TripResponse,
+  type UserInfo,
+} from "../types/tripTypes";
 import BudgetSelector from "./BudgetSelector";
 import CurrentLocationSelector from "./CurrentLocationSelector";
 import DestinationSelector from "./DestinationSelector";
 import TravelerSelector from "./TravelerSelector";
-
-// Interface for trip data that will be saved to database
-interface TripData {
-  userInfo: UserInfo;
-  formData: TripFormData;
-  createdAt: string;
-  tripResponse: TripResponse;
-}
 
 function TripCreator() {
   const [isMapLoaded, setIsMapLoaded] = useState(false);
@@ -37,6 +32,8 @@ function TripCreator() {
   const [selectedCurrentLocation, setSelectedCurrentLocation] =
     useState<google.maps.places.PlaceResult | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isRedirecting, setIsRedirecting] = useState(false);
+  const navigate = useNavigate();
 
   const form = useForm<TripFormData>({
     resolver: zodResolver(tripFormSchema),
@@ -146,7 +143,6 @@ function TripCreator() {
     await trigger("traveler");
   };
 
-  // Clean API response
   const cleanResponse = (response: string) => {
     let cleaned = response.trim();
     if (cleaned.startsWith("```json")) cleaned = cleaned.slice(7);
@@ -154,11 +150,8 @@ function TripCreator() {
     return cleaned.trim();
   };
 
-  // Form submission
   const onSubmit = async (formData: TripFormData) => {
     console.log("Form data being submitted:", formData);
-
-    // Check authentication
     if (!isUserAuthenticated()) {
       setIsDialogOpen(true);
       return;
@@ -169,34 +162,60 @@ function TripCreator() {
 
     if (!userInfo) {
       console.error("User info is null");
+      toast.error("Please sign in to generate a trip.");
       return;
     }
 
     try {
+      toast.loading("Generating your trip plan...");
+      setIsRedirecting(true);
       const response = await travelPlanner(formData);
       const cleanedResponse = cleanResponse(response);
       try {
         const parsedResponse: TripResponse = JSON.parse(cleanedResponse);
-        const tripData: TripData = {
-          userInfo: userInfo,
-          formData,
+        const tripData: TripDocument = {
+          userInfo: userInfo as UserInfo,
+          formData: {
+            ...formData,
+            startDate: {
+              type: "firestore/timestamp/1.0",
+              seconds: Math.floor(formData.startDate.getTime() / 1000),
+              nanoseconds: 0,
+            },
+          },
           createdAt: new Date().toISOString(),
           tripResponse: parsedResponse,
         };
-        saveToDB(tripData); // Function to save trip data to database or localStorage
+        toast.dismiss();
+        await saveToDB(tripData);
       } catch (parseError) {
         console.error("Failed to parse response as JSON:", parseError);
         console.log("Cleaned response:", cleanedResponse);
+        toast.dismiss();
+        toast.error("Failed to parse trip data. Please try again.");
       }
     } catch (error) {
       console.error("Error generating trip:", error);
+      toast.dismiss();
+      toast.error("Failed to generate trip. Please try again.");
     }
   };
 
-  const saveToDB = async (tripData: TripData) => {
-    await setDoc(doc(db, "trips", tripData.createdAt), {
-      ...tripData,
-    });
+  const saveToDB = async (tripData: TripDocument) => {
+    try {
+      const tripId = Date.now().toString();
+      await setDoc(doc(db, "trips", tripId), {
+        ...tripData,
+      });
+      console.log("Trip saved successfully with ID:", tripId);
+      toast.success("Trip saved successfully! Redirecting to view...");
+      setTimeout(() => {
+        navigate(`/view-trip/${tripId}`);
+      }, 1000);
+    } catch (error) {
+      console.error("Error saving trip:", error);
+      toast.error("Failed to save trip. Please try again.");
+    }
   };
 
   const handleGenerateTrip = (e: React.FormEvent) => {
@@ -205,137 +224,146 @@ function TripCreator() {
     handleSubmit(onSubmit)(e);
   };
   return (
-    <form onSubmit={(e) => e.preventDefault()}>
-      <div className="px-6 md:px-12 lg:px-24 xl:px-32 2xl:px-56 mt-10 max-w-7xl mx-auto">
-        <div className="text-center lg:text-left">
-          <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#080279] via-[#090979] to-[#00d4ff] bg-clip-text text-transparent tracking-tight leading-tight">
-            Tell Us Your Travel Preference{" "}
-            <LocationEdit className="inline-block h-7 w-7 md:h-8 md:w-8 ml-2 text-black" />
-          </h2>
-          <p className="text-lg md:text-xl text-gray-500 mt-4 md:mt-6 tracking-tight max-w-4xl">
-            We will use this information to create a personalized trip for you.
-            Please answer the following questions to help us understand your
-            travel style, interests, and preferences.{" "}
-            <TentTreeIcon className="inline-block h-5 w-5 md:h-6 md:w-6 ml-2 text-gray-500" />
-          </p>
-        </div>
-        <div className="mt-20">
-          <h3 className="text-2xl font-semibold text-gray-800 mb-8 flex items-center">
-            Where are you starting from?{" "}
-            <MapPin className="inline-block h-6 w-6 ml-2" />
-          </h3>
-          <CurrentLocationSelector
-            isMapLoaded={isMapLoaded}
-            onPlaceSelect={handleCurrentLocationSelect}
-            onClearPlace={handleClearCurrentLocation}
-            selectedPlace={selectedCurrentLocation}
-          />
-          {errors.currentLocation && (
-            <p className="text-red-500 text-sm mt-2">
-              {errors.currentLocation.message}
+    <>
+      <LoadingOverlay
+        isVisible={isRedirecting}
+        title="Almost There!"
+        message="Taking you to your personalized travel itinerary..."
+      />
+      <form onSubmit={(e) => e.preventDefault()}>
+        <div className="px-6 md:px-12 lg:px-24 xl:px-32 2xl:px-56 mt-10 max-w-7xl mx-auto">
+          <div className="text-center lg:text-left">
+            <h2 className="text-3xl md:text-4xl lg:text-5xl font-bold bg-gradient-to-r from-[#080279] via-[#090979] to-[#00d4ff] bg-clip-text text-transparent tracking-tight leading-tight">
+              Tell Us Your Travel Preference{" "}
+              <LocationEdit className="inline-block h-7 w-7 md:h-8 md:w-8 ml-2 text-black" />
+            </h2>
+            <p className="text-lg md:text-xl text-gray-500 mt-4 md:mt-6 tracking-tight max-w-4xl">
+              We will use this information to create a personalized trip for
+              you. Please answer the following questions to help us understand
+              your travel style, interests, and preferences.{" "}
+              <TentTreeIcon className="inline-block h-5 w-5 md:h-6 md:w-6 ml-2 text-gray-500" />
             </p>
-          )}
-
-          <h3 className="text-2xl font-semibold text-gray-800 mb-8 mt-12 flex items-center">
-            What is your destination?{" "}
-            <MapPin className="inline-block h-6 w-6 ml-2" />
-          </h3>
-          <DestinationSelector
-            isMapLoaded={isMapLoaded}
-            onPlaceSelect={handlePlaceSelect}
-            onClearPlace={handleClearPlace}
-            selectedPlace={selectedPlace}
-          />
-          {errors.destination && (
-            <p className="text-red-500 text-sm mt-2">
-              {errors.destination.message}
-            </p>
-          )}
-
-          <div className="max-w-4xl">
-            <h3 className="text-2xl font-semibold text-gray-800 mt-12 mb-6">
-              Trip Details{" "}
-              <CalendarDays className="inline-block h-6 w-6 ml-2" />
+          </div>
+          <div className="mt-20">
+            <h3 className="text-2xl font-semibold text-gray-800 mb-8 flex items-center">
+              Where are you starting from?{" "}
+              <MapPin className="inline-block h-6 w-6 ml-2" />
             </h3>
-            <div className="flex flex-col lg:flex-row lg:gap-8 gap-6">
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  When do you want to start your trip?
-                </label>
-                <DatePicker
-                  date={startDate}
-                  onDateChange={handleDateChange}
-                  placeholder="Select your trip start date"
-                  className="border-2 border-gray-100 w-full"
-                />
-                {errors.startDate && (
-                  <p className="text-red-500 text-sm mt-2">
-                    {errors.startDate.message}
-                  </p>
-                )}
-              </div>
+            <CurrentLocationSelector
+              isMapLoaded={isMapLoaded}
+              onPlaceSelect={handleCurrentLocationSelect}
+              onClearPlace={handleClearCurrentLocation}
+              selectedPlace={selectedCurrentLocation}
+            />
+            {errors.currentLocation && (
+              <p className="text-red-500 text-sm mt-2">
+                {errors.currentLocation.message}
+              </p>
+            )}
 
-              <div className="flex-1">
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  How many days do you plan to travel?
-                </label>
-                <Input
-                  placeholder="Ex. 3"
-                  type="number"
-                  className="py-6 w-full"
-                  {...register("days", { valueAsNumber: true })}
-                />
-                {errors.days && (
-                  <p className="text-red-500 text-sm mt-2">
-                    {errors.days.message}
-                  </p>
-                )}
+            <h3 className="text-2xl font-semibold text-gray-800 mb-8 mt-12 flex items-center">
+              What is your destination?{" "}
+              <MapPin className="inline-block h-6 w-6 ml-2" />
+            </h3>
+            <DestinationSelector
+              isMapLoaded={isMapLoaded}
+              onPlaceSelect={handlePlaceSelect}
+              onClearPlace={handleClearPlace}
+              selectedPlace={selectedPlace}
+            />
+            {errors.destination && (
+              <p className="text-red-500 text-sm mt-2">
+                {errors.destination.message}
+              </p>
+            )}
+
+            <div className="max-w-4xl">
+              <h3 className="text-2xl font-semibold text-gray-800 mt-12 mb-6">
+                Trip Details{" "}
+                <CalendarDays className="inline-block h-6 w-6 ml-2" />
+              </h3>
+              <div className="flex flex-col lg:flex-row lg:gap-8 gap-6">
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    When do you want to start your trip?
+                  </label>
+                  <DatePicker
+                    date={startDate}
+                    onDateChange={handleDateChange}
+                    placeholder="Select your trip start date"
+                    className="border-2 border-gray-100 w-full"
+                  />
+                  {errors.startDate && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.startDate.message}
+                    </p>
+                  )}
+                </div>
+
+                <div className="flex-1">
+                  <label className="block text-sm font-medium text-gray-700 mb-2">
+                    How many days do you plan to travel?
+                  </label>
+                  <Input
+                    placeholder="Ex. 3"
+                    type="number"
+                    className="py-6 w-full"
+                    {...register("days", { valueAsNumber: true })}
+                  />
+                  {errors.days && (
+                    <p className="text-red-500 text-sm mt-2">
+                      {errors.days.message}
+                    </p>
+                  )}
+                </div>
               </div>
             </div>
+
+            <BudgetSelector
+              selectedBudget={selectedBudget}
+              onBudgetSelect={handleBudgetSelect}
+            />
+            {errors.budget && (
+              <p className="text-red-500 text-sm mt-2">
+                {errors.budget.message}
+              </p>
+            )}
+
+            <TravelerSelector
+              selectedTraveler={selectedTraveler}
+              onTravelerSelect={handleTravelerSelect}
+            />
+            {errors.traveler && (
+              <p className="text-red-500 text-sm mt-2">
+                {errors.traveler.message}
+              </p>
+            )}
           </div>
 
-          <BudgetSelector
-            selectedBudget={selectedBudget}
-            onBudgetSelect={handleBudgetSelect}
-          />
-          {errors.budget && (
-            <p className="text-red-500 text-sm mt-2">{errors.budget.message}</p>
-          )}
-
-          <TravelerSelector
-            selectedTraveler={selectedTraveler}
-            onTravelerSelect={handleTravelerSelect}
-          />
-          {errors.traveler && (
-            <p className="text-red-500 text-sm mt-2">
-              {errors.traveler.message}
-            </p>
-          )}
+          <div className="my-12 flex flex-col justify-center items-center">
+            <Button
+              type="button"
+              variant="default"
+              disabled={!isValid}
+              onClick={handleGenerateTrip}
+              className={`px-8 py-3 text-lg font-semibold transition-all duration-200 ${
+                !isValid
+                  ? "opacity-50 cursor-not-allowed"
+                  : "hover:shadow-lg hover:scale-105"
+              }`}
+            >
+              Generate Trip
+            </Button>
+            {!isValid && (
+              <p className="text-red-500 text-sm mt-2">
+                Please fill out all required fields correctly.
+              </p>
+            )}
+            <SignInDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
+          </div>
         </div>
-
-        <div className="my-12 flex flex-col justify-center items-center">
-          <Button
-            type="button"
-            variant="default"
-            disabled={!isValid}
-            onClick={handleGenerateTrip}
-            className={`px-8 py-3 text-lg font-semibold transition-all duration-200 ${
-              !isValid
-                ? "opacity-50 cursor-not-allowed"
-                : "hover:shadow-lg hover:scale-105"
-            }`}
-          >
-            Generate Trip
-          </Button>
-          {!isValid && (
-            <p className="text-red-500 text-sm mt-2">
-              Please fill out all required fields correctly.
-            </p>
-          )}
-          <SignInDialog open={isDialogOpen} onOpenChange={setIsDialogOpen} />
-        </div>
-      </div>
-    </form>
+      </form>
+    </>
   );
 }
 

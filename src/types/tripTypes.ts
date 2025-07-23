@@ -1,3 +1,28 @@
+// User information interface (from Google OAuth)
+export interface UserInfo {
+  email_verified: boolean;
+  sub: string;
+  name: string;
+  picture: string;
+  family_name: string;
+  email: string;
+  given_name: string;
+}
+
+// Form data interface (from the trip creation form)
+export interface FormData {
+  currentLocation: string;
+  budget: string;
+  days: number;
+  startDate: {
+    type: string;
+    seconds: number;
+    nanoseconds: number;
+  };
+  destination: string;
+  traveler: string;
+}
+
 export interface TripDetails {
   destination: string;
   origin: string;
@@ -9,7 +34,7 @@ export interface TripDetails {
     perPerson: string;
   };
   travelers: {
-    adults: number;
+    count: string;
     travelerType: string;
   };
 }
@@ -86,12 +111,7 @@ export interface DayItinerary {
 }
 
 export interface Itinerary {
-  day1: DayItinerary;
-  day2: DayItinerary;
-  day3: DayItinerary;
-  day4: DayItinerary;
-  day5: DayItinerary;
-  [key: string]: DayItinerary; // For dynamic day keys
+  [key: string]: DayItinerary;
 }
 
 export interface UniqueActivity {
@@ -123,7 +143,7 @@ export interface TravelResources {
   safetyTips: string;
 }
 
-// Main trip response interface
+// Main trip response interface (the AI response data)
 export interface TripResponse {
   tripDetails: TripDetails;
   transportation: Transportation;
@@ -133,4 +153,12 @@ export interface TripResponse {
   uniqueActivities: UniqueActivity[];
   traditionalFoods: TraditionalFoods;
   travelResources: TravelResources;
+}
+
+// Complete Firebase document structure (what gets saved to and retrieved from Firebase)
+export interface TripDocument {
+  formData: FormData;
+  createdAt: string;
+  tripResponse: TripResponse;
+  userInfo: UserInfo;
 }

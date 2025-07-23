@@ -4,8 +4,11 @@ import { createRoot } from "react-dom/client";
 import { BrowserRouter, Route, Routes } from "react-router";
 import App from "./App.tsx";
 import Header from "./components/custom/Header.tsx";
+import PrivateRoute from "./components/PrivateRoute.tsx";
+import { Toaster } from "./components/ui/sonner.tsx";
 import TripCreator from "./create-trip/TripCreator.tsx";
 import "./index.css";
+import ViewTrip from "./view-trip/[tripId]/ViewTrip.tsx";
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
@@ -15,7 +18,16 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<App />} />
           <Route path="/create-trip" element={<TripCreator />} />
+          <Route
+            path="/view-trip/:tripId"
+            element={
+              <PrivateRoute>
+                <ViewTrip />
+              </PrivateRoute>
+            }
+          />
         </Routes>
+        <Toaster />
       </BrowserRouter>
     </GoogleOAuthProvider>
   </StrictMode>
