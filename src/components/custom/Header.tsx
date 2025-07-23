@@ -30,10 +30,8 @@ function Header() {
 
     checkAuth();
 
-    // Listen for storage changes to update auth state
     window.addEventListener("storage", checkAuth);
 
-    // Listen for custom auth events (for same-tab updates)
     window.addEventListener("authStateChanged", checkAuth);
 
     return () => {
@@ -51,7 +49,6 @@ function Header() {
 
   const handleOpenChange = (open: boolean) => {
     setShowSignInDialog(open);
-    // The custom event listener will handle auth state updates
   };
 
   return (

@@ -1,4 +1,3 @@
-// User information interface (from Google OAuth)
 export interface UserInfo {
   email_verified: boolean;
   sub: string;
@@ -9,7 +8,6 @@ export interface UserInfo {
   given_name: string;
 }
 
-// Form data interface (from the trip creation form)
 export interface FormData {
   currentLocation: string;
   budget: string;
@@ -143,7 +141,6 @@ export interface TravelResources {
   safetyTips: string;
 }
 
-// Main trip response interface (the AI response data)
 export interface TripResponse {
   tripDetails: TripDetails;
   transportation: Transportation;
@@ -155,7 +152,6 @@ export interface TripResponse {
   travelResources: TravelResources;
 }
 
-// Complete Firebase document structure (what gets saved to and retrieved from Firebase)
 export interface TripDocument {
   formData: FormData;
   createdAt: string;

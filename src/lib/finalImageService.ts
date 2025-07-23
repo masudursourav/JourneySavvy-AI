@@ -12,14 +12,8 @@ interface PlaceImageOptions {
   height?: number;
 }
 
-// Cache for images to avoid repeated API calls
 const imageCache = new Map<string, ImageResult>();
-// Track failed URLs to avoid retrying them
 const failedUrls = new Set<string>();
-
-/**
- * Robust image service with multiple fallback sources
- */
 export const getPlaceImage = async (
   options: PlaceImageOptions,
   retryCount: number = 0
@@ -33,19 +27,10 @@ export const getPlaceImage = async (
   } = options;
   const cacheKey = `${placeName}-${address}-${category}-${width}x${height}-retry${retryCount}`;
 
-  // Return cached result if available (but not for retries)
   if (retryCount === 0 && imageCache.has(cacheKey)) {
     return imageCache.get(cacheKey)!;
   }
 
-  // Debug logging
-  console.log(
-    `🔍 Loading image for: ${placeName} (${category}) - attempt ${
-      retryCount + 1
-    }`
-  );
-
-  // Try each image source in order of preference
   const imageSources = [
     { name: "Pexels", fn: () => getPexelsImage(placeName, category) },
     {
@@ -55,9 +40,9 @@ export const getPlaceImage = async (
     { name: "Unsplash", fn: () => getUnsplashImage(placeName, category) },
     { name: "Picsum", fn: () => getPicsumImage(width, height, placeName) },
   ];
+
   for (const [index, source] of imageSources.entries()) {
     try {
-      console.log(`📡 Trying ${source.name} for ${placeName}...`);
       const result = await source.fn();
       if (result.url) {
         const sourceNames = ["pexels", "google", "unsplash", "picsum"] as const;
@@ -66,20 +51,14 @@ export const getPlaceImage = async (
           source: sourceNames[index],
           isDefault: false,
         };
-        console.log(
-          `✅ ${source.name} succeeded for ${placeName}: ${result.url}`
-        );
         imageCache.set(cacheKey, imageResult);
         return imageResult;
       }
-    } catch (error) {
-      console.warn(`❌ ${source.name} failed for ${placeName}:`, error);
+    } catch {
       continue;
     }
   }
 
-  // Final fallback to styled placeholder
-  console.log(`🎨 Using styled placeholder for ${placeName}`);
   const placeholderResult: ImageResult = {
     url: generateStyledPlaceholder(placeName, category, width, height),
     source: "placeholder",
@@ -105,7 +84,6 @@ const getGooglePlaceImage = async (
   }
 
   const searchQuery = `${placeName} ${address}`.trim();
-  console.log(`🔍 Google Places search query: ${searchQuery}`);
 
   const requestBody = {
     textQuery: searchQuery,
@@ -125,18 +103,14 @@ const getGooglePlaceImage = async (
     }
   );
 
-  console.log(`📡 Google Places API response status: ${response.status}`);
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ Google Places API error:`, errorText);
     throw new Error(
       `Google Places API request failed: ${response.status} - ${errorText}`
     );
   }
 
   const data = await response.json();
-  console.log(`📊 Google Places API data:`, data);
 
   if (
     data.places &&
@@ -146,7 +120,6 @@ const getGooglePlaceImage = async (
   ) {
     const photoName = data.places[0].photos[0].name;
     const photoUrl = `https://places.googleapis.com/v1/${photoName}/media?key=${apiKey}&maxHeightPx=${height}&maxWidthPx=${width}`;
-    console.log(`✅ Google Places photo found: ${photoUrl}`);
     return { url: photoUrl };
   }
 
@@ -162,14 +135,11 @@ const getPexelsImage = async (
 ): Promise<{ url: string }> => {
   const apiKey = import.meta.env.VITE_PEXELS_API_KEY;
 
-  console.log(`🔑 Pexels API key available: ${!!apiKey}`);
-
   if (!apiKey) {
     throw new Error("Pexels API key not found");
   }
 
   const query = generateSearchQuery(placeName, category);
-  console.log(`🔍 Pexels search query: ${query}`);
 
   const response = await fetch(
     `https://api.pexels.com/v1/search?query=${encodeURIComponent(
@@ -182,22 +152,17 @@ const getPexelsImage = async (
     }
   );
 
-  console.log(`📡 Pexels API response status: ${response.status}`);
-
   if (!response.ok) {
     const errorText = await response.text();
-    console.error(`❌ Pexels API error:`, errorText);
     throw new Error(
       `Pexels API request failed: ${response.status} - ${errorText}`
     );
   }
 
   const data = await response.json();
-  console.log(`📊 Pexels API data:`, data);
 
   if (data.photos && data.photos.length > 0) {
     const photoUrl = data.photos[0].src.medium;
-    console.log(`✅ Pexels photo found: ${photoUrl}`);
     return { url: photoUrl };
   }
 
@@ -246,10 +211,8 @@ const getPicsumImage = (
   height: number,
   seed: string
 ): { url: string } => {
-  // Generate a consistent seed based on the place name
   const seedNumber = hashCode(seed) % 1000;
   const url = `https://picsum.photos/seed/${seedNumber}/${width}/${height}?blur=0&grayscale=0`;
-  console.log(`🎨 Generated Picsum URL: ${url}`);
   return { url };
 };
 
@@ -277,7 +240,7 @@ const hashCode = (str: string): number => {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
+    hash = hash & hash;
   }
   return Math.abs(hash);
 };
@@ -303,7 +266,7 @@ const generateStyledPlaceholder = (
   };
 
   const style = categoryStyles[category] || categoryStyles.general;
-  const cleanName = placeName.slice(0, 15); // Limit text length for readability
+  const cleanName = placeName.slice(0, 15);
   const text = encodeURIComponent(`${style.icon} ${cleanName}`);
 
   return `https://via.placeholder.com/${width}x${height}/${style.bg}/${style.text}?text=${text}`;
@@ -411,7 +374,6 @@ export const getImageCacheStats = () => {
   return stats;
 };
 
-// Legacy compatibility functions
 export const getHotelPhoto = getHotelImage;
 export const getAttractionPhoto = getAttractionImage;
 export const getFoodPhoto = getFoodImage;

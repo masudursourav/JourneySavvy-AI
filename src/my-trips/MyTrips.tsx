@@ -38,7 +38,6 @@ const TripCard = ({ trip, tripId }: TripCardProps) => {
         });
         setImageUrl(photo.url);
       } catch (error) {
-        console.error("Error loading place photo:", error);
       } finally {
         setImageLoading(false);
       }
@@ -47,7 +46,6 @@ const TripCard = ({ trip, tripId }: TripCardProps) => {
     loadImage();
   }, [destinationName]);
 
-  // Fallback image if Google Photos API fails
   const fallbackImage = `https://images.unsplash.com/photo-1488646953014-85cb44e25828?w=400&h=250&fit=crop&auto=format`;
 
   return (
@@ -190,7 +188,6 @@ const MyTrips = () => {
           });
         });
 
-        // Sort trips by creation date (newest first)
         userTrips.sort((a, b) => {
           const dateA = new Date(a.trip.createdAt);
           const dateB = new Date(b.trip.createdAt);
@@ -199,7 +196,6 @@ const MyTrips = () => {
 
         setTrips(userTrips);
       } catch (error) {
-        console.error("Error fetching trips:", error);
         setError("Failed to load trips. Please try again later.");
       } finally {
         setLoading(false);

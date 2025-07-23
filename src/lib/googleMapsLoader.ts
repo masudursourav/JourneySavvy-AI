@@ -23,11 +23,9 @@ export const loadGoogleMapsAPI = (): Promise<void> => {
       .load()
       .then(() => {
         isLoaded = true;
-        console.log("Google Maps API loaded successfully");
         resolve();
       })
       .catch((error: Error) => {
-        console.error("Error loading Google Maps API:", error);
         reject(error);
       });
   });

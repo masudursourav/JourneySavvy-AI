@@ -27,16 +27,11 @@ export default function SignInDialog({
       localStorage.setItem("user", JSON.stringify(tokenResponse));
       try {
         await fetchUserInfo();
-        // Dispatch event to notify header of auth change
         window.dispatchEvent(new CustomEvent("authStateChanged"));
-      } catch (error) {
-        console.error("Error fetching user info:", error);
-      }
+      } catch {}
       onOpenChange(false);
     },
-    onError: (error) => {
-      console.error("Login failed:", error);
-    },
+    onError: () => {},
   });
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>

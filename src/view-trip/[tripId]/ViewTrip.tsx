@@ -21,7 +21,6 @@ function ViewTrip() {
 
   const getTripDetails = useCallback(async () => {
     if (!tripId) {
-      console.error("Trip ID is not provided");
       toast.error("Trip ID is missing.");
       setLoading(false);
       return;
@@ -32,14 +31,11 @@ function ViewTrip() {
       const docSnap = await getDoc(docRef);
 
       if (docSnap.exists()) {
-        console.log("Trip data:", docSnap.data());
         setTripDetails(docSnap.data() as TripDocument);
       } else {
-        console.log("No such document!");
         toast.error("Trip not found.");
       }
-    } catch (error) {
-      console.error("Error fetching trip details:", error);
+    } catch {
       toast.error("Failed to load trip details.");
     } finally {
       setLoading(false);
@@ -183,8 +179,14 @@ function ViewTrip() {
           </CardHeader>
           <CardContent>
             <div className="space-y-6">
-              {Object.entries(tripDetails.tripResponse.itinerary).map(
-                ([day, details]) => (
+              {Object.entries(tripDetails.tripResponse.itinerary)
+                .sort(([dayA], [dayB]) => {
+                  // Extract day numbers from "day1", "day2", etc. and sort numerically
+                  const dayNumA = parseInt(dayA.replace(/\D/g, ""), 10);
+                  const dayNumB = parseInt(dayB.replace(/\D/g, ""), 10);
+                  return dayNumA - dayNumB;
+                })
+                .map(([day, details]) => (
                   <div key={day} className="border-l-4 border-blue-400 pl-4">
                     <h3 className="text-xl font-semibold mb-2 capitalize">
                       {day} -{" "}
@@ -201,8 +203,7 @@ function ViewTrip() {
                       ))}
                     </div>
                   </div>
-                )
-              )}
+                ))}
             </div>
           </CardContent>
         </Card>

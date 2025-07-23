@@ -62,7 +62,6 @@ function PlacesAutocomplete({
       () => {
         const place = autocomplete.getPlace();
         if (!place || !place.geometry) {
-          console.warn("No place geometry available");
           return;
         }
         onPlaceSelect(place);

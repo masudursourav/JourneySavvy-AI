@@ -3,7 +3,7 @@ import { Card } from "@/components/ui/card";
 import type { Activity } from "@/types/tripTypes";
 import { DollarSign, Star } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getAttractionPhoto } from "../../lib/googlePlacesPhoto";
+import { getAttractionImage } from "../../lib/finalImageService";
 
 interface ItineraryCardProps {
   activity: Activity;
@@ -33,27 +33,30 @@ const StarRating: React.FC<{ rating: number | null }> = ({ rating }) => {
 };
 
 const ItineraryCard: React.FC<ItineraryCardProps> = ({ activity }) => {
-  const [imageUrl, setImageUrl] = useState<string>(activity.imageUrl || "");
-  const [isLoadingImage, setIsLoadingImage] = useState(!activity.imageUrl);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [isLoadingImage, setIsLoadingImage] = useState(true);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const loadAttractionPhoto = async () => {
-      if (!activity.imageUrl) {
-        try {
-          setIsLoadingImage(true);
-          const photo = await getAttractionPhoto(activity.placeName);
-          if (photo.url) {
-            setImageUrl(photo.url);
-          } else {
-            setImageUrl("");
-          }
-        } catch (error) {
-          console.error("Error loading attraction photo:", error);
+      try {
+        setIsLoadingImage(true);
+        const photo = await getAttractionImage(activity.placeName);
+        if (photo.url) {
+          setImageUrl(photo.url);
+        } else if (activity.imageUrl) {
+          setImageUrl(activity.imageUrl);
+        } else {
           setImageUrl("");
-        } finally {
-          setIsLoadingImage(false);
         }
+      } catch {
+        if (activity.imageUrl) {
+          setImageUrl(activity.imageUrl);
+        } else {
+          setImageUrl("");
+        }
+      } finally {
+        setIsLoadingImage(false);
       }
     };
 
@@ -63,7 +66,29 @@ const ItineraryCard: React.FC<ItineraryCardProps> = ({ activity }) => {
   const handleImageError = () => {
     if (!imageError) {
       setImageError(true);
-      setImageUrl("");
+
+      const fetchFallbackImage = async () => {
+        try {
+          setIsLoadingImage(true);
+          const photo = await getAttractionImage(
+            activity.placeName,
+            undefined,
+            1
+          );
+          if (photo.url && photo.url !== imageUrl) {
+            setImageUrl(photo.url);
+            setImageError(false);
+          } else {
+            setImageUrl("");
+          }
+        } catch {
+          setImageUrl("");
+        } finally {
+          setIsLoadingImage(false);
+        }
+      };
+
+      fetchFallbackImage();
     }
   };
 

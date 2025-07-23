@@ -5,7 +5,9 @@ interface ImportMetaEnv {
   readonly VITE_GEMINI_API_KEY: string;
   readonly VITE_GOOGLE_AUTH_CLIENT_ID: string;
 
-  // Firebase Configuration
+  readonly VITE_PEXELS_API_KEY: string;
+  readonly VITE_UNSPLASH_ACCESS_KEY: string;
+
   readonly VITE_FIREBASE_API_KEY: string;
   readonly VITE_FIREBASE_AUTH_DOMAIN: string;
   readonly VITE_FIREBASE_PROJECT_ID: string;
@@ -14,7 +16,6 @@ interface ImportMetaEnv {
   readonly VITE_FIREBASE_APP_ID: string;
   readonly VITE_FIREBASE_MEASUREMENT_ID: string;
 
-  // Add other environment variables here as needed
 }
 
 interface ImportMeta {

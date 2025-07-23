@@ -1,33 +1,36 @@
 import type { Food } from "@/types/tripTypes";
 import { useEffect, useState } from "react";
-import { getFoodPhoto } from "../../lib/googlePlacesPhoto";
+import { getFoodImage } from "../../lib/finalImageService";
 
 interface FoodCardProps {
   food: Food;
 }
 
 const FoodCard: React.FC<FoodCardProps> = ({ food }) => {
-  const [imageUrl, setImageUrl] = useState<string>(food.imageUrl || "");
-  const [isLoadingImage, setIsLoadingImage] = useState(!food.imageUrl);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [isLoadingImage, setIsLoadingImage] = useState(true);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const loadFoodPhoto = async () => {
-      if (!food.imageUrl) {
-        try {
-          setIsLoadingImage(true);
-          const photo = await getFoodPhoto(food.name);
-          if (photo.url) {
-            setImageUrl(photo.url);
-          } else {
-            setImageUrl("");
-          }
-        } catch (error) {
-          console.error("Error loading food photo:", error);
+      try {
+        setIsLoadingImage(true);
+        const photo = await getFoodImage(food.name);
+        if (photo.url) {
+          setImageUrl(photo.url);
+        } else if (food.imageUrl) {
+          setImageUrl(food.imageUrl);
+        } else {
           setImageUrl("");
-        } finally {
-          setIsLoadingImage(false);
         }
+      } catch {
+        if (food.imageUrl) {
+          setImageUrl(food.imageUrl);
+        } else {
+          setImageUrl("");
+        }
+      } finally {
+        setIsLoadingImage(false);
       }
     };
 
@@ -37,7 +40,24 @@ const FoodCard: React.FC<FoodCardProps> = ({ food }) => {
   const handleImageError = () => {
     if (!imageError) {
       setImageError(true);
-      setImageUrl("");
+
+      const fetchFallbackImage = async () => {
+        try {
+          setIsLoadingImage(true);
+          const photo = await getFoodImage(food.name, undefined, 1);
+          if (photo.url && photo.url !== imageUrl) {
+            setImageUrl(photo.url);
+            setImageError(false);
+          } else {
+            setImageUrl("");
+          }
+        } catch {
+          setImageUrl("");
+        } finally {
+          setIsLoadingImage(false);
+        }
+      };
+      fetchFallbackImage();
     }
   };
 

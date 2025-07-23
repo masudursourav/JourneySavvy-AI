@@ -62,20 +62,17 @@ function TripCreator() {
     startDate: watch("startDate"),
   };
 
-  // Load Google Maps API
   useEffect(() => {
     const loadMapsAPI = async () => {
       try {
         await loadGoogleMapsAPI();
         setIsMapLoaded(true);
       } catch (error) {
-        console.error("Failed to load Google Maps API:", error);
       }
     };
     loadMapsAPI();
   }, []);
 
-  // Extract city and country from place
   const extractLocationInfo = (place: google.maps.places.PlaceResult) => {
     let cityName = "";
     let countryName = "";
@@ -97,7 +94,6 @@ function TripCreator() {
       : place.name || place.formatted_address || "selected";
   };
 
-  // Form handlers
   const handleCurrentLocationSelect = async (
     place: google.maps.places.PlaceResult
   ) => {
@@ -151,17 +147,14 @@ function TripCreator() {
   };
 
   const onSubmit = async (formData: TripFormData) => {
-    console.log("Form data being submitted:", formData);
     if (!isUserAuthenticated()) {
       setIsDialogOpen(true);
       return;
     }
 
     const userInfo = getUserInfo();
-    console.log("User info for trip:", userInfo);
 
     if (!userInfo) {
-      console.error("User info is null");
       toast.error("Please sign in to generate a trip.");
       return;
     }
@@ -189,13 +182,10 @@ function TripCreator() {
         toast.dismiss();
         await saveToDB(tripData);
       } catch (parseError) {
-        console.error("Failed to parse response as JSON:", parseError);
-        console.log("Cleaned response:", cleanedResponse);
         toast.dismiss();
         toast.error("Failed to parse trip data. Please try again.");
       }
     } catch (error) {
-      console.error("Error generating trip:", error);
       toast.dismiss();
       toast.error("Failed to generate trip. Please try again.");
     }
@@ -207,20 +197,17 @@ function TripCreator() {
       await setDoc(doc(db, "trips", tripId), {
         ...tripData,
       });
-      console.log("Trip saved successfully with ID:", tripId);
       toast.success("Trip saved successfully! Redirecting to view...");
       setTimeout(() => {
         navigate(`/view-trip/${tripId}`);
       }, 1000);
     } catch (error) {
-      console.error("Error saving trip:", error);
       toast.error("Failed to save trip. Please try again.");
     }
   };
 
   const handleGenerateTrip = (e: React.FormEvent) => {
     e.preventDefault();
-    console.log("Generate Trip button clicked");
     handleSubmit(onSubmit)(e);
   };
   return (

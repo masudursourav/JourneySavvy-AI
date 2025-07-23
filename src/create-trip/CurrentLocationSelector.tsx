@@ -75,7 +75,6 @@ function CurrentLocationSelector({
                 address_components: place.address_components,
               };
 
-              console.log("Detected location:", displayName);
               setIsGpsLocation(true);
               setShowManualEntry(false);
               onPlaceSelect(placeResult);
@@ -87,13 +86,11 @@ function CurrentLocationSelector({
           });
         } catch (error) {
           setIsDetecting(false);
-          console.error("Error getting current location:", error);
           alert("Error detecting location. Please select manually.");
         }
       },
       (error) => {
         setIsDetecting(false);
-        console.error("Geolocation error:", error);
 
         switch (error.code) {
           case error.PERMISSION_DENIED:

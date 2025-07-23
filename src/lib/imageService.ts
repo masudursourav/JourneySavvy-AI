@@ -12,7 +12,6 @@ interface PlaceImageOptions {
   height?: number;
 }
 
-// Cache for images to avoid repeated API calls
 const imageCache = new Map<string, ImageResult>();
 
 /**
@@ -30,13 +29,11 @@ export const getPlaceImage = async (
   } = options;
   const cacheKey = `${placeName}-${address}-${category}-${width}x${height}`;
 
-  // Return cached result if available
   if (imageCache.has(cacheKey)) {
     return imageCache.get(cacheKey)!;
   }
 
   try {
-    // Try Google Places API first
     const googleResult = await getGooglePlaceImage(
       placeName,
       address,
@@ -52,12 +49,11 @@ export const getPlaceImage = async (
       imageCache.set(cacheKey, result);
       return result;
     }
-  } catch (error) {
-    console.warn("Google Places API failed, trying fallback sources:", error);
+  } catch {
+    // Intentionally ignore errors from Google Place Image
   }
 
   try {
-    // Fallback to Unsplash API
     const unsplashResult = await getUnsplashImage(placeName, category);
     if (unsplashResult.url) {
       const result: ImageResult = {
@@ -68,12 +64,11 @@ export const getPlaceImage = async (
       imageCache.set(cacheKey, result);
       return result;
     }
-  } catch (error) {
-    console.warn("Unsplash API failed, trying Pexels:", error);
+  } catch {
+    // Intentionally ignore errors from Unsplash API
   }
 
   try {
-    // Fallback to Pexels API
     const pexelsResult = await getPexelsImage(placeName, category);
     if (pexelsResult.url) {
       const result: ImageResult = {
@@ -84,11 +79,10 @@ export const getPlaceImage = async (
       imageCache.set(cacheKey, result);
       return result;
     }
-  } catch (error) {
-    console.warn("Pexels API failed, using placeholder:", error);
+  } catch {
+    // Intentionally ignore errors from Pexels API
   }
 
-  // Add Picsum fallback before final placeholder
   try {
     const picsumResult = getPicsumImage(width, height, placeName);
     if (picsumResult.url) {
@@ -100,11 +94,10 @@ export const getPlaceImage = async (
       imageCache.set(cacheKey, result);
       return result;
     }
-  } catch (error) {
-    console.warn("Picsum failed, using styled placeholder:", error);
+  } catch {
+    // Intentionally ignore errors from Picsum fallback
   }
 
-  // Final fallback to placeholder
   const placeholderResult: ImageResult = {
     url: generatePlaceholderImage(placeName, category, width, height),
     source: "placeholder",
@@ -251,7 +244,6 @@ const getPicsumImage = (
   height: number,
   seed: string
 ): { url: string } => {
-  // Generate a consistent seed based on the place name
   const seedNumber = hashCode(seed) % 1000;
   return {
     url: `https://picsum.photos/seed/${seedNumber}/${width}/${height}?blur=0&grayscale=0`,
@@ -266,7 +258,6 @@ const hashCode = (str: string): number => {
   for (let i = 0; i < str.length; i++) {
     const char = str.charCodeAt(i);
     hash = (hash << 5) - hash + char;
-    hash = hash & hash; // Convert to 32bit integer
   }
   return Math.abs(hash);
 };
@@ -307,7 +298,6 @@ const generatePlaceholderImage = (
   const emoji = categoryEmojis[category] || "📍";
   const text = encodeURIComponent(`${emoji} ${placeName}`);
 
-  // Using placeholder.com service
   return `https://via.placeholder.com/${width}x${height}/e2e8f0/64748b?text=${text}`;
 };
 

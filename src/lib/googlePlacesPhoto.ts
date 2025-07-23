@@ -22,7 +22,6 @@ interface GooglePlacesResponse {
   places?: GooglePlace[];
 }
 
-// Cache for place photos to avoid repeated API calls
 const photoCache = new Map<string, PlacePhoto>();
 
 /**
@@ -36,7 +35,6 @@ export const getPlacePhoto = async ({
 }: PlacePhotoOptions): Promise<PlacePhoto> => {
   const cacheKey = `${placeName}-${address}-${width}x${height}`;
 
-  // Return cached result if available
   if (photoCache.has(cacheKey)) {
     return photoCache.get(cacheKey)!;
   }
@@ -44,10 +42,8 @@ export const getPlacePhoto = async ({
   const searchQuery = `${placeName} ${address}`.trim();
 
   try {
-    // Use Google Places API (New) to search for places
     const placesResult = await searchPlaces(searchQuery);
     if (placesResult && placesResult.photos && placesResult.photos.length > 0) {
-      // Get photo URL using Places Photo API
       const photoUrl = await getPhotoUrl(
         placesResult.photos[0].name,
         width,
@@ -60,13 +56,10 @@ export const getPlacePhoto = async ({
       photoCache.set(cacheKey, result);
       return result;
     }
-  } catch (error) {
-    console.error("Google Places API failed:", error);
-  }
+  } catch {}
 
-  // Return placeholder when Google Places fails or has no photos
   const placeholderResult: PlacePhoto = {
-    url: "", // Empty URL - components should handle this
+    url: "",
     isDefault: true,
   };
   photoCache.set(cacheKey, placeholderResult);
@@ -125,7 +118,6 @@ const getPhotoUrl = async (
 ): Promise<string> => {
   const apiKey = import.meta.env.VITE_GOOGLE_MAPS_API_KEY;
 
-  // Use the photo name directly in the API call
   return `https://places.googleapis.com/v1/${photoName}/media?key=${apiKey}&maxHeightPx=${height}&maxWidthPx=${width}`;
 };
 

@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import type { HotelOption } from "@/types/tripTypes";
 import { DollarSign, MapPin, Star } from "lucide-react";
 import { useEffect, useState } from "react";
-import { getHotelPhoto } from "../../lib/googlePlacesPhoto";
+import { getHotelImage } from "../../lib/finalImageService";
 
 interface AccommodationCardProps {
   hotel: HotelOption;
@@ -31,28 +31,30 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
 };
 
 const AccommodationCard: React.FC<AccommodationCardProps> = ({ hotel }) => {
-  const [imageUrl, setImageUrl] = useState<string>(hotel.imageUrl || "");
-  const [isLoadingImage, setIsLoadingImage] = useState(!hotel.imageUrl);
+  const [imageUrl, setImageUrl] = useState<string>("");
+  const [isLoadingImage, setIsLoadingImage] = useState(true);
   const [imageError, setImageError] = useState(false);
 
   useEffect(() => {
     const loadHotelPhoto = async () => {
-      if (!hotel.imageUrl) {
-        try {
-          setIsLoadingImage(true);
-          const photo = await getHotelPhoto(hotel.name, hotel.address);
-          if (photo.url) {
-            setImageUrl(photo.url);
-          } else {
-            // No image available from Google Places
-            setImageUrl("");
-          }
-        } catch (error) {
-          console.error("Error loading hotel photo:", error);
+      try {
+        setIsLoadingImage(true);
+        const photo = await getHotelImage(hotel.name, hotel.address);
+        if (photo.url) {
+          setImageUrl(photo.url);
+        } else if (hotel.imageUrl) {
+          setImageUrl(hotel.imageUrl);
+        } else {
           setImageUrl("");
-        } finally {
-          setIsLoadingImage(false);
         }
+      } catch {
+        if (hotel.imageUrl) {
+          setImageUrl(hotel.imageUrl);
+        } else {
+          setImageUrl("");
+        }
+      } finally {
+        setIsLoadingImage(false);
       }
     };
 
@@ -62,7 +64,25 @@ const AccommodationCard: React.FC<AccommodationCardProps> = ({ hotel }) => {
   const handleImageError = () => {
     if (!imageError) {
       setImageError(true);
-      setImageUrl(""); // Remove broken image
+
+      const fetchFallbackImage = async () => {
+        try {
+          setIsLoadingImage(true);
+          const photo = await getHotelImage(hotel.name, hotel.address);
+          if (photo.url && photo.url !== imageUrl) {
+            setImageUrl(photo.url);
+            setImageError(false);
+          } else {
+            setImageUrl("");
+          }
+        } catch {
+          setImageUrl("");
+        } finally {
+          setIsLoadingImage(false);
+        }
+      };
+
+      fetchFallbackImage();
     }
   };
 
