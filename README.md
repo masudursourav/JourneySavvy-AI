@@ -312,14 +312,6 @@ This project is licensed under the MIT License - see the [LICENSE](LICENSE) file
 - **Lucide React** - For consistent iconography
 - **Tailwind CSS** - For rapid UI development
 
-## 📞 Support
-
-If you encounter any issues or have questions:
-
-- 📧 **Email**: [masudursourav@example.com](mailto:masudursourav@example.com)
-- 🐛 **Issues**: [GitHub Issues](https://github.com/masudursourav/AI-Trip-Planner/issues)
-- 💬 **Discussions**: [GitHub Discussions](https://github.com/masudursourav/AI-Trip-Planner/discussions)
-
 ## 🗺️ Roadmap
 
 - [ ] **Mobile App** - React Native version
@@ -335,22 +327,5 @@ If you encounter any issues or have questions:
   <h3>🌟 Start planning your dream trip today! 🌟</h3>
   <p>Made with ❤️ by <a href="https://github.com/masudursourav">Masudur Sourav</a></p>
 </div>
-  {
-    files: ["**/*.{ts,tsx}"],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs["recommended-typescript"],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ["./tsconfig.node.json", "./tsconfig.app.json"],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-]);
+
 ```
