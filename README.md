@@ -11,9 +11,7 @@
   ![TailwindCSS](https://img.shields.io/badge/tailwindcss-%2338B2AC.svg?style=for-the-badge&logo=tailwind-css&logoColor=white)
 </div>
 
-<div align="center">
-  <img src="https://via.placeholder.com/800x400/4285F4/ffffff?text=JourneySavvy+AI+Trip+Planner" alt="JourneySavvy Banner" style="border-radius: 10px; margin: 20px 0;"/>
-</div>
+
 
 ## 🚀 Overview
 
